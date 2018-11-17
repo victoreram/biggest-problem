@@ -30,14 +30,6 @@ trim_text <- function(html){
     # Convert the list into a vector
     unlist()                             
 }
-
-    get_reviewer_names <- function(html){
-      html %>% 
-        html_nodes('.user-review-name-link') %>% 
-        html_text() %>% 
-        str_trim() %>% 
-        unlist()
-    }
 ```
 
 
