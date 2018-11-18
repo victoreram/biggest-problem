@@ -119,9 +119,6 @@ out <- vector("list", 104)
 out <- vector("list", 50)
 sample_urls <- vec_url_episodes[1:104]
 sample_eps <- seq(1:104)
-sample_urls <- vec_url_episodes[56:104]
-sample_eps <- seq(56:104)
-
 
 for (ep in sample_eps){
   
@@ -129,82 +126,10 @@ for (ep in sample_eps){
                              ep)
 }
 
-get_transcript(sample_urls[[74]], 74)
 binded <- bind_rows(out)
 write.csv(binded, 'biggest_problem.csv', fileEncoding = 'UTF-8', row.names = F)
 ```
 
-```{r}
-map2(list_episodes, test)
-url_episode
-df_test <- get_transcript('http://biggest.thedickshow.com/episode-99/', 99)
-df_test2 <- get_transcript('http://biggest.thedickshow.com/episode-2/', 2)
-df_combined <- rbind(df_test, df_test2)
-write.csv(df_test, 'ep_99.csv', fileEncoding = 'UTF-8', row.names = F)
-df_test %>% data.frame()
-df_test <- pmap(list_episodes, test)
-data.frame(df_test)
-df <- as.data.frame(df_test)
-df
-### Iterate over episodes
-# url_episode <- 
-html_episode <- read_html(url_episode)
-url_transcript <- get_link(html_episode)
-text_episode <- url_to_html(url)
 
-text_episode_stripped <- text_episode %>% 
-  str_replace_all("[\r\n]" , "") %>%
-  gsub(pattern = '\"', replacement = "")
-
-speakers <- get_speakers(text_episode_stripped)
-pattern_speakers <- paste0(speakers, collapse="|")
-pattern_dialogue <- paste0("\\s+(?=(", pattern_speakers, "))")
-
-df_text <- text_to_df(text_episode_stripped, pattern_dialogue)
-df_text <- df_text %>% 
-  mutate(speaker = as.character(speaker),
-         text = trimws(as.character(text)),
-         episode = as.character(episode)) %>%
-  rownames_to_column('order')
-df_text
-# transcript <- 
-#   str_split(text_episode_stripped, 
-#           pattern_dialogue) %>% 
-#   unlist()
-# transcript <- transcript[-1]
-# list_transcript <- regmatches(transcript, regexpr(":", transcript), invert = TRUE)
-# df_text <- do.call(rbind.data.frame, list_transcript)
-
-  # str_match("<a href=\"(.*?)\"") %>% 
-  # as.vector() %>% 
-  # nth(2)
-  #str_trim() %>% 
-  # str_detect('Transcript')
-  # html_attr('href') # get links
-#html_episode %>% trim_text()
-```
-
-
-```{r}
-
-
-
-
-
-#str_split(transcript, "^[:alpha:]+:", n=1)
-df_text <- do.call(rbind.data.frame, list_transcript)
-
-names(df_text) <- c("speaker", "text")
-
-df_text <- df_text %>% mutate(speaker = as.character(speaker),
-                   text = trimws(as.character(text)))
-df_text %>% head()
-
-write.csv(df_text, "transcript.csv")
-#data.frame(Reduce(rbind, list_transcript))
-
-
-#ldply (list_transcript, data.frame)
-```
 
 
