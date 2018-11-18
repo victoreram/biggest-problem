@@ -4,6 +4,10 @@ output: html_document
 ---
 
 ```{r}
+
+#library(plyr)
+
+#library(dplyr)
 # General-purpose data wrangling
 library(tidyverse)  
 
@@ -20,57 +24,145 @@ library(rebus)
 library(lubridate)
 ```
 ```{r}
-trim_text <- function(html){
+get_link <- function(html,
+                     href_text='Transcript'){
   html %>% 
-    # The relevant tag
-    #html_nodes('.review-body') %>%      
+  html_nodes("a") %>% 
+  grep(pattern = href_text, value=T) %>%
+  read_html() %>%
+  html_nodes("a") %>%
+  html_attr('href')
+}
+
+url_to_html <- function(url){
+  url %>% 
+    read_html() %>%
     html_text() %>% 
     # Trim additional white space
     str_trim() %>%                       
     # Convert the list into a vector
-    unlist()                             
+    unlist()   
 }
-```
 
-
-```{r}
-'http://biggest.thedickshow.com/wp-content/uploads/2014/05/Maddox_BPU_3.htm'
-url_base <- 'http://biggest.thedickshow.com/wp-content/uploads/' 
-url_years <- c('2014', '2015')
-url_bpu <- 'Maddox_BPU_'
-url_ext <- '.htm'
-url <- 'http://biggest.thedickshow.com/wp-content/uploads/2014/Maddox_BPU_54.htm'
-```
-
-```{r}
-html_file <- read_html(url)
-html_file
-```
-```{r}
-text_episode <- trim_text(html_file)
-```
-
-
-```{r}
-#html_text(html_file)
-text_episode_stripped <- gsub('\"', "", str_replace_all(text_episode, "[\r\n]" , ""))
-#text_episode_stripped
-```
-```{r}
-speakers <- text_episode_stripped %>% 
-  str_match_all("[:alpha:]+:") %>% 
+get_speakers <- function(text){
+  text %>% 
+  str_match_all("\"?[:alpha:]+:") %>% 
   unlist() %>% 
   unique() %>%
   str_subset("^[:upper:]")
-speakers
-pattern_speakers <- paste0(speakers, collapse="|")
-pattern_speakers
-pattern_dialogue <- paste0("\\s+(?=(", pattern_speakers, "))")
-pattern_dialogue
+}
 
-str_split(text_episode_stripped, 
-          pattern_dialogue) %>% 
-  unlist()
+text_to_df <- function(text,
+                       pattern){
+ transcript <- str_split(text, 
+                         pattern) %>% 
+   unlist()
+  transcript <- transcript[-1]
+  list_transcript <- regmatches(transcript, regexpr(":", transcript), invert = TRUE)
+  df_text <- do.call(rbind.data.frame, list_transcript)
+  names(df_text) <- c("speaker", "text")
+  return(df_text)
+}
+
+
+### Generate urls
+url_episode_base <- 'http://biggest.thedickshow.com/episode-'
+url_suffix <- paste0(seq(1:104) %>% as.character(), '/')
+vec_url_episodes <- paste0(url_episode_base, url_suffix)
+list_episodes <- list(url_episode = vec_url_episodes, episode = seq(1:104))
+
+get_transcript <- function(url_episode, 
+                           episode){
+  #print(paste0(url_episode, episode, sep =" "))
+  # url_episode <- 'http://biggest.thedickshow.com/episode-100/'
+  # episode <- 100
+
+  html_episode <- read_html(url_episode)
+  url_transcript <- get_link(html_episode)
+  text_episode <- url_to_html(url_transcript)
+  
+  text_episode_stripped <- text_episode %>% 
+    str_replace_all("[\r\n]" , " ") %>%
+    gsub(pattern = '\"', replacement = "")
+  
+  speakers <- get_speakers(text_episode_stripped)
+  pattern_speakers <- paste0(speakers, collapse="|")
+  pattern_dialogue <- paste0("\\s+(?=(", pattern_speakers, "))")
+  
+  df_text <- text_to_df(text_episode_stripped, pattern_dialogue)
+  df_text <- df_text %>% 
+    mutate(speaker = as.character(speaker),
+           text = trimws(as.character(text)),
+           episode = as.character(episode)) %>%
+    rownames_to_column('order')
+  return(df_text)
+}
+url_episode
+df_test <- get_transcript('http://biggest.thedickshow.com/episode-99/', 99)
+write.csv(df_test, 'ep_99.csv', fileEncoding = 'UTF-8', row.names = F)
+df_test %>% data.frame()
+df_test <- pmap(list_episodes, test)
+data.frame(df_test)
+df <- as.data.frame(df_test)
+df
+### Iterate over episodes
+# url_episode <- 
+html_episode <- read_html(url_episode)
+url_transcript <- get_link(html_episode)
+text_episode <- url_to_html(url)
+
+text_episode_stripped <- text_episode %>% 
+  str_replace_all("[\r\n]" , "") %>%
+  gsub(pattern = '\"', replacement = "")
+
+speakers <- get_speakers(text_episode_stripped)
+pattern_speakers <- paste0(speakers, collapse="|")
+pattern_dialogue <- paste0("\\s+(?=(", pattern_speakers, "))")
+
+df_text <- text_to_df(text_episode_stripped, pattern_dialogue)
+df_text <- df_text %>% 
+  mutate(speaker = as.character(speaker),
+         text = trimws(as.character(text)),
+         episode = as.character(episode)) %>%
+  rownames_to_column('order')
+df_text
+# transcript <- 
+#   str_split(text_episode_stripped, 
+#           pattern_dialogue) %>% 
+#   unlist()
+# transcript <- transcript[-1]
+# list_transcript <- regmatches(transcript, regexpr(":", transcript), invert = TRUE)
+# df_text <- do.call(rbind.data.frame, list_transcript)
+
+  # str_match("<a href=\"(.*?)\"") %>% 
+  # as.vector() %>% 
+  # nth(2)
+  #str_trim() %>% 
+  # str_detect('Transcript')
+  # html_attr('href') # get links
+#html_episode %>% trim_text()
+```
+
+```{r}
+
+
+
+
+
+#str_split(transcript, "^[:alpha:]+:", n=1)
+df_text <- do.call(rbind.data.frame, list_transcript)
+
+names(df_text) <- c("speaker", "text")
+
+df_text <- df_text %>% mutate(speaker = as.character(speaker),
+                   text = trimws(as.character(text)))
+df_text %>% head()
+
+write.csv(df_text, "transcript.csv")
+#data.frame(Reduce(rbind, list_transcript))
+
+
+#ldply (list_transcript, data.frame)
 ```
 
 
