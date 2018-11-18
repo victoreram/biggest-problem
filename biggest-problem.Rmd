@@ -26,12 +26,19 @@ library(lubridate)
 ```{r}
 get_link <- function(html,
                      href_text='Transcript'){
-  html %>% 
+  links <- html %>% 
   html_nodes("a") %>% 
-  grep(pattern = href_text, value=T) %>%
-  read_html() %>%
-  html_nodes("a") %>%
-  html_attr('href')
+  grep(pattern = href_text, value=T)
+  # %>%
+  if(length(links) == 0){
+    return(NA)
+  } else {
+    return(links %>% 
+             read_html() %>%
+             html_nodes("a") %>%
+             html_attr('href'))
+  }
+  
 }
 
 url_to_html <- function(url){
@@ -64,23 +71,24 @@ text_to_df <- function(text,
   return(df_text)
 }
 
-
-### Generate urls
-url_episode_base <- 'http://biggest.thedickshow.com/episode-'
-url_suffix <- paste0(seq(1:104) %>% as.character(), '/')
-vec_url_episodes <- paste0(url_episode_base, url_suffix)
-list_episodes <- list(url_episode = vec_url_episodes, episode = seq(1:104))
-
 get_transcript <- function(url_episode, 
                            episode){
-  #print(paste0(url_episode, episode, sep =" "))
-  # url_episode <- 'http://biggest.thedickshow.com/episode-100/'
-  # episode <- 100
 
+  #url_episode <- 'http://biggest.thedickshow.com/episode-74/'
   html_episode <- read_html(url_episode)
+
   url_transcript <- get_link(html_episode)
+  if(is.na(url_transcript)){
+    return(NULL)
+  }
+  #res <- try(url_transcript <- get_link(html_episode))
+  #if(inherits(res, "try-error")) stop
+
+  if (!startsWith(url_transcript, "http://biggest.thedickshow.com")){
+    url_transcript <- paste0("http://biggest.thedickshow.com", url_transcript)
+  }
+  print(url_transcript)
   text_episode <- url_to_html(url_transcript)
-  
   text_episode_stripped <- text_episode %>% 
     str_replace_all("[\r\n]" , " ") %>%
     gsub(pattern = '\"', replacement = "")
@@ -91,14 +99,47 @@ get_transcript <- function(url_episode,
   
   df_text <- text_to_df(text_episode_stripped, pattern_dialogue)
   df_text <- df_text %>% 
-    mutate(speaker = as.character(speaker),
-           text = trimws(as.character(text)),
-           episode = as.character(episode)) %>%
+    mutate(episode = as.character(episode),
+           speaker = as.character(speaker),
+           text = trimws(as.character(text))
+           ) %>%
     rownames_to_column('order')
   return(df_text)
 }
+
+
+### Generate urls
+url_episode_base <- 'http://biggest.thedickshow.com/episode-'
+url_suffix <- paste0(seq(1:104) %>% as.character(), '/')
+vec_url_episodes <- paste0(url_episode_base, url_suffix)
+list_episodes <- list(url_episode = vec_url_episodes, episode = seq(1:104))
+
+### Build list of dfs
+out <- vector("list", 104)
+out <- vector("list", 50)
+sample_urls <- vec_url_episodes[1:104]
+sample_eps <- seq(1:104)
+sample_urls <- vec_url_episodes[56:104]
+sample_eps <- seq(56:104)
+
+
+for (ep in sample_eps){
+  
+  out[[ep]] <- get_transcript(sample_urls[[ep]], 
+                             ep)
+}
+
+get_transcript(sample_urls[[74]], 74)
+binded <- bind_rows(out)
+write.csv(binded, 'biggest_problem.csv', fileEncoding = 'UTF-8', row.names = F)
+```
+
+```{r}
+map2(list_episodes, test)
 url_episode
 df_test <- get_transcript('http://biggest.thedickshow.com/episode-99/', 99)
+df_test2 <- get_transcript('http://biggest.thedickshow.com/episode-2/', 2)
+df_combined <- rbind(df_test, df_test2)
 write.csv(df_test, 'ep_99.csv', fileEncoding = 'UTF-8', row.names = F)
 df_test %>% data.frame()
 df_test <- pmap(list_episodes, test)
@@ -142,6 +183,7 @@ df_text
   # html_attr('href') # get links
 #html_episode %>% trim_text()
 ```
+
 
 ```{r}
 
